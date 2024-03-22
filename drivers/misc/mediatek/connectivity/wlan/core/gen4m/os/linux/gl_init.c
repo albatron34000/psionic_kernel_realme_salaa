@@ -6332,7 +6332,7 @@ static int initWlan(void)
 #if (CFG_CHIP_RESET_SUPPORT)
 	glResetInit(prGlueInfo);
 #endif
-	kalNotifierReg(prGlueInfo);
+	kalFbNotifierReg(prGlueInfo);
 	wlanRegisterNetdevNotifier();
 
 #if CFG_MODIFY_TX_POWER_BY_BAT_VOLT
@@ -6394,7 +6394,7 @@ static void exitWlan(void)
 	DBGLOG(INIT, INFO, "Free wlan device..\n");
 	wlanFreeNetDev();
 #endif
-	kalNotifierUnReg();
+	kalFbNotifierUnReg();
 	wlanUnregisterNetdevNotifier();
 
 	/* printk("remove %p\n", wlanRemove); */
