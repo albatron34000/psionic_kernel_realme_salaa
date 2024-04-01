@@ -36,7 +36,6 @@ jobs:
           v=$(cat version)
           d="arch/arm64/configs/salaa_defconfig"
           sed -i "s/\(CONFIG_LOCALVERSION=\"-psionic-kernelsu-\).*\"/\1$v\"/" $d
-          patch -p1 <*.patch
 
       - name: Check Version Kernel
         run: |
