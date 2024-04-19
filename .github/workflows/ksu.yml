@@ -1,10 +1,15 @@
-# Copyright (C) 2024 psionicprjkt
-
-name: build-kernelsu
+name: build-kernelsu-ok
 
 on:
   workflow_dispatch:
-
+    inputs:
+      DEVICE_NAME:
+        description: 'DEVICE_NAME'
+        required: true
+        default: 'RMX2151'
+      MANIFEST_BRANCH:
+        required: true
+        default: '14-ksu'
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,44 +26,42 @@ jobs:
         run: |
           git clone https://github.com/akhilnarang/scripts x
           cd x/setup && bash android_build_env.sh
+      - name: Install OpenJDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '8'
 
+      - name: Setup SSH Keys
+        if: ${{ startsWith(github.event.inputs.MANIFEST_URL, 'git@github.com') }}
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: |
+              ${{ secrets.SSH_PRIVATE_KEY }}          
       - name: Setup Repository & Resources
         run: |
-          git config --global user.name "officialputuid" && git config --global user.email officialputuid@hack.id
-          git clone --recursive --depth=1 https://officialputuid:${{ secrets.GH_TOKEN }}@github.com/${{ secrets.GH_REPO_PRIVATE }} -b ${{ secrets.GH_BRANCH_PRIVATE }} salaa && cd salaa
+          git config --global user.name "gofaraway71" && git config --global user.email aalbatron@google.com
+          git clone --depth=1 https://github.com/albatron34000/android_kernel_realme_salaa -b android-14 mt6785
+          cd mt6785
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
           git clone --depth=1 https://github.com/psionicprjkt/aarch64-linux-android-4.9 arm64 && git clone --depth=1 https://github.com/psionicprjkt/arm-linux-androideabi-4.9 arm32
-          wget --quiet https://android.googlesource.com/platform//prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz -O "aosp-clang.tar.gz"
-          mkdir clang && tar -xf aosp-clang.tar.gz -C clang && rm -f aosp-clang.tar.gz
-
-      - name: Setup Version
-        run: |
-          cd salaa
-          v=$(cat version)
-          d="arch/arm64/configs/salaa_defconfig"
-          sed -i "s/\(CONFIG_LOCALVERSION=\"-psionic-kernelsu-\).*\"/\1$v\"/" $d
-
-      - name: Check Version Kernel
-        run: |
-          cd salaa
-          kv=$(make kernelversion 2>/dev/null)
-          d="arch/arm64/configs/salaa_defconfig"
-          echo "Kernel Version: $kv"
-          echo "Local Version: $(grep CONFIG_LOCALVERSION= $d | cut -d '"' -f2)"
-
+          wget --quiet https://android.googlesource.com/platform//prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz -O "clang.tar.gz"
+          mkdir clang && tar -xf clang.tar.gz -C clang && rm -f clang.tar.gz
       - name: Setup Build Kernel
-        run: cd salaa && . build-ksu.sh
+        run: cd mt6785 && bash build-ksu.sh
+        working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+        
 
-      - name: Set Release Date
-        run: |
-          echo "RELEASE_DATE=$(date +"%d%m%Y")" >> "$GITHUB_ENV"
-          echo "VERSION_KERNEL=$(cat version)" >> "$GITHUB_ENV"
-
-      - name: Release Kernel
-        uses: marvinpinto/action-automatic-releases@latest
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: "KernelSU"
-          prerelease: false
-          title: psionic-kernel-salaa-${{ env.RELEASE_DATE }}-${{ env.VERSION_KERNEL }}-KernelSU
-          files: |
-            salaa/AnyKernel/psionic-kernel-salaa*
+          files: mt6785/AnyKernel/gofaraway*
+          name: psionic_salaa_KernelSU
+          tag_name: ${{ github.run_id }}
+          body: |
+            Manifest: ${{ github.event.inputs.MANIFEST_BRANCH }}
+            Device: ${{ github.event.inputs.DEVICE_NAME }}
+            Target: salaa_KernelSU
+            Version:Android14
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
